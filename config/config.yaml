@@ -1,0 +1,139 @@
+# ============================================================
+# GNSS DEFORMATION VMD-CNN-LSTM PIPELINE — Configuration
+# ============================================================
+
+# --- Metadata Proyek ---
+project:
+  name: "GNSS Deformation Prediction — VMD-CNN-LSTM"
+  description: "Pipeline prediksi deformasi GNSS 3-axis (E, N, U)"
+  version: "1.0.0"
+
+# --- Path Data ---
+data:
+  excel_master:       "data/raw/excel_master/tenv3.xlsx"   # ← nama file asli
+  txt_stations_dir:   "data/raw/txt_stations/"
+  processed_dir:      "data/processed/"
+  gmt_inputs_dir:     "data/gmt_inputs/"
+
+# --- Konfigurasi Gempa ---
+seismic_event:
+  earthquake_date:    "2011-03-11"   # Format YYYY-MM-DD
+  pre_seismic_days:   90             # Hari sebelum gempa untuk analisis
+  post_seismic_days:  30             # Hari sesudah gempa
+  prediction_horizon: 30             # Hari yang diprediksi ke depan
+  epicenter:          [142.369, 38.3220]  # [lon, lat] episenter
+
+# --- Preprocessing ---
+preprocessing:
+  outlier_detection:
+    method:    "mad"    # 'mad' = Median Absolute Deviation (robust)
+    threshold: 3.0      # 3 × MAD
+  interpolation:
+    method:      "pchip"  # 'pchip' atau 'spline'
+    max_gap_days: 5        # Gap maksimum yang boleh diinterpolasi
+  normalization: "minmax"  # 'minmax' atau 'zscore'
+
+# --- VMD ---
+vmd:
+  enabled:    true
+  n_modes:    5        # K: jumlah IMF
+  alpha:      2000.0   # Balancing parameter
+  tau:        0.0      # Time-step (0 = noise-tolerant)
+  DC:         0        # 0 = tidak ada DC mode
+  init:       1        # 1 = uniform init
+  tolerance:  1.0e-7   # Konvergensi
+
+# --- CNN ---
+cnn:
+  enabled:      true
+  kernel_sizes: [3, 5, 7]
+  num_filters:  [32, 64, 128]
+  dropout_rate: 0.3
+
+# --- LSTM ---
+lstm:
+  hidden_units: 64
+  num_layers:   2
+  dropout:      0.2
+  bidirectional: true
+
+# --- Training ---
+training:
+  window_size:       30       # Lookback window (epoch)
+  prediction_horizon: 10      # Sama dengan seismic_event.prediction_horizon
+  train_ratio:       0.70
+  validation_split:  0.15
+  batch_size:        32
+  epochs:            100
+  learning_rate:     0.001
+  weight_decay:      1.0e-5
+  optimizer:         "adam"
+  loss_function:     "mse"
+  early_stopping:
+    enabled:   true
+    patience:  15
+    min_delta: 1.0e-4
+  scheduler:
+    enabled:  true
+    type:     "reduce_on_plateau"
+    patience: 5
+    factor:   0.5
+
+# --- Checkpointing ---
+checkpointing:
+  enabled:       true
+  save_best_only: true
+  monitor_metric: "val_loss"
+  save_dir:       "outputs/models/"
+
+# --- Evaluasi ---
+evaluation:
+  metrics:
+    - "rmse"
+    - "mae"
+    - "mape"
+    - "r2"
+    - "nrmse"
+
+# --- GMT Visualisasi ---
+gmt:
+  enabled:          true
+  region:           "140/152/40/50"   # Sesuaikan dengan area data
+  projection:       "M15c"
+  frame:            "a2g2"
+  coast_resolution: "i"               # f/h/i/l/c
+  velo:
+    scale:          "0.05c/1"         # 1 cm/yr = 0.05c
+    confidence:     95
+    head_length:    0.3c
+    head_width:     0.15c
+  output_dpi:       300
+  output_formats:   ["pdf", "png"]
+
+# --- Output ---
+output:
+  save_dir: "outputs/plots/"
+  naming:
+    pre_seismic: "map_pre_seismic"
+    co_seismic:  "map_co_seismic"
+    predicted:   "map_predicted"
+
+# --- Hardware ---
+hardware:
+  use_gpu:     false   # Set true jika ada GPU
+  gpu_device:  0
+  num_workers: 4
+  precision:   "float32"
+
+# --- Logging ---
+logging:
+  level:   "INFO"
+  format:  "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file:    "logs/gnss_pipeline.log"
+  console: true
+
+# --- Lanjutan ---
+advanced:
+  random_seed:               42
+  verbose:                   true
+  save_intermediate_results: true

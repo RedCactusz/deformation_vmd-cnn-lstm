@@ -129,11 +129,25 @@ def _vmd_core(signal: np.ndarray, alpha: float, tau: float,
     logger.debug(f"VMD converged at iteration {n_iter} (uDiff={uDiff:.2e})")
 
     # Rekonstruksi domain waktu dari seluruh spektrum (conjugate symmetry)
+    # u = np.zeros((K, T_ext))
+    # for k in range(K):
+    #     u_hat_full = np.zeros(T_ext, dtype=complex)
+    #     u_hat_full[T_ext // 2:] = u_hat[k][T_ext // 2:]
+    #     u_hat_full[1:T_ext // 2] = np.conj(u_hat[k][T_ext // 2 + 1:][::-1])
+    #     u[k] = np.real(np.fft.ifft(np.fft.ifftshift(u_hat_full)))
+    
     u = np.zeros((K, T_ext))
     for k in range(K):
         u_hat_full = np.zeros(T_ext, dtype=complex)
+        
+        # 1. Salin setengah spektrum frekuensi positif (dari indeks tengah ke kanan)
         u_hat_full[T_ext // 2:] = u_hat[k][T_ext // 2:]
-        u_hat_full[1:T_ext // 2] = np.conj(u_hat[k][T_ext // 2 + 1:][::-1])
+        
+        # 2. Isi frekuensi negatif (sisi kiri) menggunakan simetri konjugat secara matematis
+        for idx in range(1, T_ext // 2):
+            u_hat_full[idx] = np.conj(u_hat_full[T_ext - idx])
+            
+        # 3. Transformasi balik ke domain waktu
         u[k] = np.real(np.fft.ifft(np.fft.ifftshift(u_hat_full)))
 
     # Potong kembali ke panjang asli (hapus mirror)
@@ -150,7 +164,7 @@ class VMDProcessor:
         # Coba import vmdpy untuk implementasi yang lebih robust
         try:
             from vmdpy import VMD as vmdpy_VMD
-            self._use_vmdpy = True
+            self._use_vmdpy = False
             self._vmdpy_VMD = vmdpy_VMD
             logger.info(f"VMDProcessor: menggunakan vmdpy backend")
         except ImportError:

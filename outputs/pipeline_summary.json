@@ -1,0 +1,374 @@
+{
+  "step1": {
+    "total_stations": 21,
+    "total_file_size_mb": 20.86011505126953,
+    "output_directory": "data/raw/txt_stations",
+    "extraction_date": "2026-06-01T01:20:39.613473",
+    "files": {
+      "J908": 1504478,
+      "J533": 329291,
+      "X014": 150960,
+      "G191": 751586,
+      "J072": 2155947,
+      "UKU1": 250404,
+      "J183": 1282381,
+      "JGD2": 70466,
+      "J541": 1115715,
+      "J028": 2143244,
+      "J905": 1109531,
+      "J154": 2039125,
+      "S062": 865429,
+      "J027": 2155947,
+      "J176": 87648,
+      "J844": 1679834,
+      "J550": 1122167,
+      "G175": 1559926,
+      "J161": 298781,
+      "J157": 770722,
+      "J902": 429834
+    }
+  },
+  "step2": {
+    "n_stations": 20,
+    "station_names": [
+      "G191",
+      "J027",
+      "J028",
+      "J072",
+      "J154",
+      "J157",
+      "J161",
+      "J176",
+      "J183",
+      "J533",
+      "J541",
+      "J550",
+      "J844",
+      "J902",
+      "J905",
+      "J908",
+      "JGD2",
+      "S062",
+      "UKU1",
+      "X014"
+    ],
+    "n_epochs": 11541,
+    "timestamp": "2026-06-01T01:20:39.982596",
+    "per_station": {
+      "G191": {
+        "n_epochs": 11541,
+        "lat": 39.3374585779,
+        "lon": -218.4651413209,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J027": {
+        "n_epochs": 11541,
+        "lat": 40.1334499681,
+        "lon": -218.2109051922,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J028": {
+        "n_epochs": 11541,
+        "lat": 39.572386793,
+        "lon": -218.0600372838,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J072": {
+        "n_epochs": 11541,
+        "lat": 40.1334499681,
+        "lon": -218.2109051922,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J154": {
+        "n_epochs": 11541,
+        "lat": 40.5776435832,
+        "lon": -220.0718841168,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J157": {
+        "n_epochs": 11541,
+        "lat": 40.2910763466,
+        "lon": -218.9235253062,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J161": {
+        "n_epochs": 11541,
+        "lat": 39.5965724794,
+        "lon": -218.8278944849,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J176": {
+        "n_epochs": 11541,
+        "lat": 38.5394811898,
+        "lon": -218.8524586024,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J183": {
+        "n_epochs": 11541,
+        "lat": 40.2154407973,
+        "lon": -219.2126657535,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J533": {
+        "n_epochs": 11541,
+        "lat": 41.4047070382,
+        "lon": -218.5524133242,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J541": {
+        "n_epochs": 11541,
+        "lat": 40.6435674018,
+        "lon": -219.1966531927,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J550": {
+        "n_epochs": 11541,
+        "lat": 38.3011873278,
+        "lon": -218.4993130371,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J844": {
+        "n_epochs": 11541,
+        "lat": 40.8344073246,
+        "lon": -219.1894620025,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J902": {
+        "n_epochs": 11541,
+        "lat": 40.4476340347,
+        "lon": -219.0584095707,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J905": {
+        "n_epochs": 11541,
+        "lat": 39.9709561433,
+        "lon": -218.3378198279,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "J908": {
+        "n_epochs": 11541,
+        "lat": 39.5544570539,
+        "lon": -219.1636813899,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "JGD2": {
+        "n_epochs": 11541,
+        "lat": 40.8557435043,
+        "lon": -218.6126662722,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "S062": {
+        "n_epochs": 11541,
+        "lat": 40.7944905295,
+        "lon": -218.6008236242,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "UKU1": {
+        "n_epochs": 11541,
+        "lat": 44.026087179,
+        "lon": -214.134564647,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      },
+      "X014": {
+        "n_epochs": 11541,
+        "lat": 39.8351226651,
+        "lon": -219.1442675767,
+        "columns": [
+          "site",
+          "YYMMMDD",
+          "yyyy.yyyy",
+          "__MJD",
+          "week",
+          "d"
+        ]
+      }
+    }
+  },
+  "step3": {
+    "shape": [
+      11541,
+      20,
+      3
+    ],
+    "n_stations": 20
+  },
+  "step4": {
+    "n_modes": 5,
+    "feature_shape": [
+      11541,
+      300
+    ]
+  },
+  "step5": {
+    "epochs_done": 29,
+    "best_val_loss": 0.0012368371282247136,
+    "model_path": "outputs/models/best_model.pt"
+  },
+  "step6": {
+    "predictions_shape": [
+      20,
+      3
+    ]
+  },
+  "step7": {
+    "velocity": "data/gmt_inputs/velocity_pre_seismic.gmt",
+    "coordinates": "data/gmt_inputs/stations_coords.gmt",
+    "ts_G191": "data/gmt_inputs/timeseries_G191.txt",
+    "ts_J027": "data/gmt_inputs/timeseries_J027.txt",
+    "ts_J028": "data/gmt_inputs/timeseries_J028.txt",
+    "ts_J072": "data/gmt_inputs/timeseries_J072.txt",
+    "ts_J154": "data/gmt_inputs/timeseries_J154.txt",
+    "ts_J157": "data/gmt_inputs/timeseries_J157.txt",
+    "ts_J161": "data/gmt_inputs/timeseries_J161.txt",
+    "ts_J176": "data/gmt_inputs/timeseries_J176.txt",
+    "ts_J183": "data/gmt_inputs/timeseries_J183.txt",
+    "ts_J533": "data/gmt_inputs/timeseries_J533.txt",
+    "ts_J541": "data/gmt_inputs/timeseries_J541.txt",
+    "ts_J550": "data/gmt_inputs/timeseries_J550.txt",
+    "ts_J844": "data/gmt_inputs/timeseries_J844.txt",
+    "ts_J902": "data/gmt_inputs/timeseries_J902.txt",
+    "ts_J905": "data/gmt_inputs/timeseries_J905.txt",
+    "ts_J908": "data/gmt_inputs/timeseries_J908.txt",
+    "ts_JGD2": "data/gmt_inputs/timeseries_JGD2.txt",
+    "ts_S062": "data/gmt_inputs/timeseries_S062.txt",
+    "ts_UKU1": "data/gmt_inputs/timeseries_UKU1.txt",
+    "ts_X014": "data/gmt_inputs/timeseries_X014.txt",
+    "event": "data/gmt_inputs/earthquake_event.gmt",
+    "predictions": "data/gmt_inputs/predictions_coords.gmt"
+  },
+  "elapsed_seconds": 1962.799969,
+  "finished_at": "2026-06-01T01:52:25.648872"
+}

@@ -5,17 +5,17 @@
 # --- Metadata Proyek ---
 project:
   name: "GNSS Deformation Prediction — VMD-CNN-LSTM"
-  description: "Pipeline prediksi deformasi GNSS 3-axis (E, N, U)"
-  version: "1.0.0"
+  description: "Sistem Monitoring Deformasi & Early Warning Gempa via Multi-Task Deep Learning"
+  version: "1.1.0"
 
 # --- Path Data ---
 data:
-  excel_master:       "data/raw/excel_master/tenv3.xlsx"   # ← nama file asli
+  excel_master:       "data/raw/excel_master/tenv3.xlsx"
   txt_stations_dir:   "data/raw/txt_stations/"
   processed_dir:      "data/processed/"
   gmt_inputs_dir:     "data/gmt_inputs/"
 
-# --- Konfigurasi Gempa ---
+# --- Konfigurasi Gempa (Event-Based Reference) ---
 seismic_event:
   earthquake_date:    "2011-03-11"   # Format YYYY-MM-DD
   pre_seismic_days:   90             # Hari sebelum gempa untuk analisis
@@ -23,46 +23,64 @@ seismic_event:
   prediction_horizon: 30             # Hari yang diprediksi ke depan
   epicenter:          [142.369, 38.3220]  # [lon, lat] episenter
 
-# --- Preprocessing ---
+# --- Preprocessing & Feature Engineering ---
 preprocessing:
   outlier_detection:
-    method:    "mad"    # 'mad' = Median Absolute Deviation (robust)
-    threshold: 3.0      # 3 × MAD
+    method:    "mad"
+    threshold: 3.0
   interpolation:
-    method:      "pchip"  # 'pchip' atau 'spline'
-    max_gap_days: 5        # Gap maksimum yang boleh diinterpolasi
-  normalization: "minmax"  # 'minmax' atau 'zscore'
+    method:      "pchip"
+    max_gap_days: 5
+  normalization: "minmax"
+
+  # BARU: Feature Engineering untuk indikator fisik (Strain/Energy)
+  feature_engineering:
+    enabled: true
+    calculate_strain: true            # Jarak relatif antar stasiun
+    calculate_cumulative_disp: true   # Akumulasi pergeseran
+    calculate_velocity_gradient: true  # Perubahan kecepatan temporal
+    inter_station_pairs: "all"        # 'all' atau list pasangan stasiun spesifik
 
 # --- VMD ---
 vmd:
   enabled:    true
-  n_modes:    5        # K: jumlah IMF
-  alpha:      2000.0   # Balancing parameter
-  tau:        0.0      # Time-step (0 = noise-tolerant)
-  DC:         0        # 0 = tidak ada DC mode
-  init:       1        # 1 = uniform init
-  tolerance:  1.0e-7   # Konvergensi
+  n_modes:    5
+  alpha:      2000.0
+  tau:        0.0
+  DC:         0
+  init:        1
+  tolerance:  1.0e-7
 
-# --- CNN ---
-cnn:
-  enabled:      true
-  kernel_sizes: [3, 5, 7]
-  num_filters:  [32, 64, 128]
-  dropout_rate: 0.3
-
-# --- LSTM ---
-lstm:
-  hidden_units: 64
-  num_layers:   2
-  dropout:      0.2
-  bidirectional: true
+# --- Arsitektur Model ---
+model:
+  type: "multi_task"                 # 'single_output' atau 'multi_task'
+  cnn:
+    enabled:      true
+    kernel_sizes: [3, 5, 7]
+    num_filters:  [32, 64, 128]
+    dropout_rate: 0.3
+  lstm:
+    hidden_units: 64
+    num_layers:   2
+    dropout:      0.2
+    bidirectional: true
+  # Definisi Output Multi-Task
+  outputs:
+    - name: "coordinate_regression"
+      type: "regression"             # Prediksi [E, N, U]
+    - name: "event_classification"
+      type: "classification"         # Prediksi probabilitas gempa
+  event_prediction_window: 30        # Window prediksi kejadian (hari)
 
 # --- Training ---
 training:
-  window_size:       30       # Lookback window (epoch)
-  prediction_horizon: 10      # Sama dengan seismic_event.prediction_horizon
-  train_ratio:       0.70
-  validation_split:  0.15
+  strategy: "event_based"            # 'ratio' (lama) atau 'event_based' (baru)
+  # Jika strategy == 'event_based', maka training set = [awal -> earthquake_date + 7 days]
+
+  window_size:       30              # Lookback window (epoch)
+  prediction_horizon: 10
+  train_ratio:       0.70            # Digunakan hanya jika strategy == 'ratio'
+  validation_split:  0.15            # Digunakan hanya jika strategy == 'ratio'
   batch_size:        32
   epochs:            100
   learning_rate:     0.001
@@ -77,7 +95,7 @@ training:
     enabled:  true
     type:     "reduce_on_plateau"
     patience: 5
-    factor:   0.5
+    factor: 0.5
 
 # --- Checkpointing ---
 checkpointing:
@@ -94,19 +112,20 @@ evaluation:
     - "mape"
     - "r2"
     - "nrmse"
+    - "f1_score"                     # Tambahan untuk classification head
 
 # --- GMT Visualisasi ---
 gmt:
   enabled:          true
-  region:           "140/152/40/50"   # Sesuaikan dengan area data
+  region:           "140/152/40/50"
   projection:       "M15c"
   frame:            "a2g2"
-  coast_resolution: "i"               # f/h/i/l/c
+  coast_resolution: "i"
   velo:
-    scale:          "0.05c/1"         # 1 cm/yr = 0.05c
+    scale:          "0.05c/1"
     confidence:     95
     head_length:    0.3c
-    head_width:     0.15c
+    head_width:    0.15c
   output_dpi:       300
   output_formats:   ["pdf", "png"]
 
@@ -120,7 +139,7 @@ output:
 
 # --- Hardware ---
 hardware:
-  use_gpu:     false   # Set true jika ada GPU
+  use_gpu:     false
   gpu_device:  0
   num_workers: 4
   precision:   "float32"
@@ -129,7 +148,7 @@ hardware:
 logging:
   level:   "INFO"
   format:  "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  file:    "logs/gnss_pipeline.log"
+  file:   "logs/gnss_pipeline.log"
   console: true
 
 # --- Lanjutan ---

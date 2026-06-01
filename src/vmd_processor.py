@@ -164,7 +164,7 @@ class VMDProcessor:
         # Coba import vmdpy untuk implementasi yang lebih robust
         try:
             from vmdpy import VMD as vmdpy_VMD
-            self._use_vmdpy = False
+            self._use_vmdpy = True
             self._vmdpy_VMD = vmdpy_VMD
             logger.info(f"VMDProcessor: menggunakan vmdpy backend")
         except ImportError:
@@ -174,7 +174,7 @@ class VMDProcessor:
         logger.info(f"  K={self.config.n_modes}, alpha={self.config.alpha}, "
                     f"tol={self.config.tol}")
 
-    def vmd(self, signal: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def vmd(self, signal: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Dekomposisi VMD.
 
@@ -182,18 +182,21 @@ class VMDProcessor:
             signal: 1D time series (T,)
 
         Returns:
-            imfs  : (K, T) IMF
-            omega : (K,) center frequencies (normalized)
+            imfs       : (K, T) IMF
+            omega      : (K,) center frequencies (normalized)
+            clean_signal: (T,) NaN-free signal used for decomposition
         """
         # Tangani NaN
         nan_mask = np.isnan(signal)
         if nan_mask.any():
             signal = signal.copy()
             valid = ~nan_mask
-            # Interpolasi linear sederhana untuk NaN sebelum VMD
-            xi = np.where(valid)[0]
-            xp = np.arange(len(signal))
-            signal = np.interp(xp, xi, signal[xi])
+            if valid.sum() < 3:
+                signal = np.zeros(len(signal))
+            else:
+                xi = np.where(valid)[0]
+                xp = np.arange(len(signal))
+                signal = np.interp(xp, xi, signal[xi])
 
         # Normalisasi sinyal (VMD sensitif terhadap skala)
         sig_mean = np.mean(signal)
@@ -217,7 +220,13 @@ class VMDProcessor:
                 imfs = imfs * sig_std
                 # Tambahkan mean ke mode pertama (bias)
                 imfs[0] += sig_mean
-                return imfs, omega
+
+                # Final NaN check before returning
+                if np.isnan(imfs).any():
+                    logger.warning("vmdpy produced NaNs. Filling with zeros.")
+                    imfs = np.nan_to_num(imfs)
+
+                return imfs, omega, signal
             except Exception as e:
                 logger.warning(f"vmdpy gagal: {e}, fallback ke implementasi lokal")
 
@@ -231,11 +240,17 @@ class VMDProcessor:
             init=self.config.init,
             tol=self.config.tol
         )
+
+        # Handle NaNs produced by VMD
+        if np.isnan(imfs).any():
+            logger.warning("VMD local implementation produced NaNs. Filling with zeros.")
+            imfs = np.nan_to_num(imfs)
+
         # Denormalisasi
         imfs = imfs * sig_std
         imfs[0] += sig_mean
 
-        return imfs, omega
+        return imfs, omega, signal
 
     def decompose_signal(self, signal: np.ndarray) -> Dict:
         """
@@ -247,9 +262,9 @@ class VMDProcessor:
             'reconstruction': (T,) rekonstruksi dari semua IMF
             'residual'      : (T,) sisa (signal - reconstruction)
         """
-        imfs, omega = self.vmd(signal)
+        imfs, omega, clean_signal = self.vmd(signal)
         reconstruction = np.sum(imfs, axis=0)
-        residual = signal - reconstruction
+        residual = clean_signal - reconstruction
 
         recon_err = np.sqrt(np.mean(residual ** 2))
         logger.debug(f"VMD reconstruction RMSE: {recon_err:.6e}")

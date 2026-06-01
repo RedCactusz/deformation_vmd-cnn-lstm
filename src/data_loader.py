@@ -60,7 +60,7 @@ class GNSSStation:
         if lon_col:
             raw_lon = float(self.data[lon_col].dropna().iloc[0])
             # tenv3 memakai longitude negatif untuk barat; konversi ke -180..180
-            self.lon = raw_lon if raw_lon <= 180 else raw_lon - 360
+            self.lon = ((raw_lon + 180) % 360) - 180
 
     def get_time(self) -> np.ndarray:
         """

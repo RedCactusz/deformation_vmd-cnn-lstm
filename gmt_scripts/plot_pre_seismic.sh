@@ -1,110 +1,64 @@
 #!/bin/bash
 # ============================================================================
-# GMT Script: PRE-SEISMIC DEFORMATION MAP
-# ============================================================================
-# Visualisasi vektor deformasi GNSS sebelum gempa menggunakan GMT 6
-
-set -e  # Exit on error
-
-# Configuration
-PROJECT_NAME="gnss_deformation"
-OUTPUT_DIR="outputs/plots"
-GMT_INPUT_DIR="data/gmt_inputs"
+# GMT: PRE-SEISMIC VELOCITY MAP — Tohoku, Japan
+# Unit: mm/yr | Scale: Se0.015c
+set -e
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/map_config.sh"
 MAP_NAME="map_pre_seismic"
 
-# GMT parameters
-PROJECTION="M8i"                    # Mercator projection, 8 inch width
-FRAME="a1g1"                        # Frame and grid
-COASTLINE="black"
-BORDER="thicker"
-DPI="300"
+echo "GMT: PRE-SEISMIC VELOCITY MAP"
+echo "Region: $REGION  Projection: $PROJECTION"
 
-# Region (Indonesia - Jawa region)
-REGION="139/147/37/45"             # Japan Region (Tohoku)
-
-# Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-echo "=========================================="
-echo "GMT Map Generation: PRE-SEISMIC"
-echo "=========================================="
-echo "Region: $REGION"
-echo "Projection: $PROJECTION"
-echo "Output: $OUTPUT_DIR/$MAP_NAME"
-echo "=========================================="
+gmt begin "$OUTPUT_DIR/$MAP_NAME" pdf,png
 
-# Initialize GMT session
-gmt begin $MAP_NAME ps
-
-# Set GMT defaults
 gmt set MAP_FRAME_TYPE plain
-gmt set FONT_LABEL 12p,Helvetica,black
-gmt set FONT_ANNOT_PRIMARY 10p,Helvetica,black
-gmt set MAP_TITLE_OFFSET 0.5c
-gmt set MAP_FRAME_WIDTH 0.1c
+gmt set MAP_FRAME_WIDTH 0.12c
+gmt set MAP_TITLE_OFFSET 0.8c
+gmt set FONT_TITLE "$FONT_TITLE"
+gmt set FONT_LABEL "$FONT_LABEL"
+gmt set FONT_ANNOT_PRIMARY "$FONT_ANNOT"
 
-# Main map
-echo "Creating base map..."
-gmt basemap -R$REGION -J$PROJECTION -B$FRAME -BWSne+t"Pre-Seismic GNSS Deformation"
 
-# Add coastlines
-echo "Adding coastlines..."
-gmt coast -R$REGION -J$PROJECTION -Slightblue -W1p,$COASTLINE -N1
+gmt basemap -R$REGION -J$PROJECTION -Bxa1 -Bya1 \
+    -BWSne+t"Pre-Seismic GNSS Velocity Field - Tohoku, Japan"
 
-# Add gridlines
-echo "Adding grid..."
-gmt basemap -R$REGION -J$PROJECTION -Bg1
+gmt coast -R$REGION -J$PROJECTION -Df -W0.4p,dimgray -Slightblue -N1/0.3p -B
 
-# Plot velocity vectors (if file exists)
 if [ -f "$GMT_INPUT_DIR/velocity_pre_seismic.gmt" ]; then
-    echo "Plotting velocity vectors..."
     gmt velo "$GMT_INPUT_DIR/velocity_pre_seismic.gmt" -R$REGION -J$PROJECTION \
-        -Sw -A18p+e -W0.5p,red -L -N \
-        -t40
+        -Se0.015c/0.95 -A14p+e+a30 -W0.8p,darkblue -Gdarkblue -L -N
 fi
 
-# Plot earthquake epicenter
-if [ -f "$GMT_INPUT_DIR/earthquake_event.gmt" ]; then
-    echo "Marking earthquake epicenter..."
-    gmt plot "$GMT_INPUT_DIR/earthquake_event.gmt" -R$REGION -J$PROJECTION \
-        -Sa0.5c -Gred -W1p,darkred
-fi
-
-# Plot station locations
 if [ -f "$GMT_INPUT_DIR/stations_coords.gmt" ]; then
-    echo "Plotting station locations..."
     gmt plot "$GMT_INPUT_DIR/stations_coords.gmt" -R$REGION -J$PROJECTION \
-        -Sc0.15c -Gblue -W0.5p,darkblue
-    
-    # Add station labels
+        -Sc0.22c -Gdarkblue -W0.4p,white
     gmt text "$GMT_INPUT_DIR/stations_coords.gmt" -R$REGION -J$PROJECTION \
-        -F+f7p,Helvetica,black+jLM -Dj0.1c/0.1c
+        -F+f5.5p,Helvetica,darkblue+jLM -Dj0.15c/0.15c
 fi
 
-# Add scale
-echo "Adding scale..."
-gmt basemap -R$REGION -J$PROJECTION -Lg140/38+c-7.5+w50k+l"Scale (km)"
+if [ -f "$GMT_INPUT_DIR/earthquake_event.gmt" ]; then
+    gmt plot "$GMT_INPUT_DIR/earthquake_event.gmt" -R$REGION -J$PROJECTION \
+        -Sa0.55c -Gred -W0.8p,darkred
+fi
 
-# Add north arrow
-echo "Adding north arrow..."
-gmt basemap -R$REGION -J$PROJECTION -Tmg141/37+w2c+l
+gmt basemap -R$REGION -J$PROJECTION -Lg139.4/37.2+c38+w50k+l"50 km"+f
+gmt basemap -R$REGION -J$PROJECTION -Tdg142.4/41.2+w1.2c+f2+l
 
-# Add color bar for deformation (if applicable)
-# gmt colorbar -Ccolors.cpt -Dx8c/-1c+w10c/0.5c+h -Bxaf -By+lDeformation
+cat > legend.txt << 'EOF'
+H 12p Helvetica-Bold Legend
+D 0.2c 1p
+S 0.5c - 0.8c darkblue 1.5p,darkblue 0.5c Velocity (mm/yr)
+S 0.5c a 0.28c red 0.8p,darkred 0.5c Epicenter (M9.0)
+S 0.5c c 0.22c darkblue 0.4p,white 0.5c GNSS Station
+EOF
+gmt legend legend.txt -R$REGION -J$PROJECTION \
+    -DjTL+w5.0c+o0.3c -F+p0.5p+gwhite
+rm -f legend.txt
 
-# Finalize
 gmt end
 
-# Convert to PDF and PNG
-echo "Converting to multiple formats..."
-ps2pdf $MAP_NAME.ps "$OUTPUT_DIR/$MAP_NAME.pdf"
-convert -density $DPI -alpha off "$OUTPUT_DIR/$MAP_NAME.pdf" "$OUTPUT_DIR/$MAP_NAME.png"
-
-# Cleanup
-rm -f $MAP_NAME.ps gmt.history
-
-echo "=========================================="
-echo "✓ Pre-seismic map created successfully"
-echo "  Output: $OUTPUT_DIR/$MAP_NAME.pdf"
-echo "          $OUTPUT_DIR/$MAP_NAME.png"
-echo "=========================================="
+rm -f gmt.history topo.nc
+echo "Done: $OUTPUT_DIR/$MAP_NAME"

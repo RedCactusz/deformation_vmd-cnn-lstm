@@ -17,6 +17,7 @@ from datetime import datetime
 
 from src.models import CNNLSTMModel, ModelConfig
 from src.preprocessor import Preprocessor
+from src.gmt_exporter import GMTExporter
 
 try:
     from pyproj import Transformer
@@ -222,6 +223,123 @@ class GNSSPredictor:
             "critical_area": critical_station
         }
 
+    def generate_gmt_maps(self, target_date_str: str):
+        import subprocess
+
+        result = self.predict_deformation_at_date(target_date_str)
+        if isinstance(result, str):
+            print(f"\n{result}")
+            return
+
+        eq_date_str = self.config['seismic_event']['earthquake_date']
+        eq_dt = datetime.strptime(eq_date_str, "%Y-%m-%d")
+        eq_mjd = (eq_dt - datetime(1858, 11, 17)).days
+        eq_dec = 1858.87759 + (eq_mjd / 365.25)
+
+        pre_eq_dec = eq_dec - (30 / 365.25)
+        pre_eq_coords = self._get_coords_at_dec(pre_eq_dec)
+        eq_coords = result['earthquake_coords']
+        co_seismic_disp = eq_coords - pre_eq_coords
+
+        predicted_disp = result['predicted'] - eq_coords
+        actual_disp = None
+        if result['actual_coords'] is not None:
+            actual_disp = result['actual_coords'] - eq_coords
+
+        pre_seismic_days = self.config['seismic_event'].get('pre_seismic_days', 90)
+        pre_start_dec = eq_dec - (pre_seismic_days / 365.25)
+        velocities = self._calculate_velocities(pre_start_dec, eq_dec)
+
+        exporter = GMTExporter(self.config['data']['gmt_inputs_dir'])
+
+        exporter.create_station_coords_file(self.station_names, self.station_locations)
+
+        eq_loc = self.config['seismic_event'].get('epicenter', [142.369, 38.322])
+        exporter.create_event_markers(eq_date_str, tuple(eq_loc), magnitude=9.0)
+
+        if actual_disp is not None:
+            exporter.create_predicted_vs_actual_file(
+                self.station_names, self.station_locations,
+                predicted_disp, actual_disp, target_date_str
+            )
+        else:
+            exporter.create_predicted_vs_actual_file(
+                self.station_names, self.station_locations,
+                predicted_disp, predicted_disp, target_date_str
+            )
+
+        exporter.create_co_seismic_displacement_file(
+            self.station_names, self.station_locations,
+            co_seismic_disp, eq_date_str
+        )
+
+        exporter.create_velocity_file(velocities, period='pre')
+
+        print("\nGenerating GMT maps...")
+        scripts_dir = Path("gmt_scripts")
+
+        for script_name in ["plot_pre_seismic.sh", "plot_co_seismic.sh"]:
+            script_path = scripts_dir / script_name
+            if script_path.exists():
+                print(f"  Running {script_name}...")
+                try:
+                    subprocess.run(
+                        ["bash", str(script_path)],
+                        capture_output=True, text=True, timeout=60
+                    )
+                except Exception as e:
+                    print(f"  Warning: {script_name} failed: {e}")
+
+        pred_script = scripts_dir / "plot_predicted.sh"
+        if pred_script.exists():
+            print(f"  Running plot_predicted.sh...")
+            try:
+                subprocess.run(
+                    ["bash", str(pred_script), target_date_str],
+                    capture_output=True, text=True, timeout=60
+                )
+            except Exception as e:
+                print(f"  Warning: plot_predicted.sh failed: {e}")
+
+        print(f"\nMaps generated in: {self.config['output']['save_dir']}")
+        print("  - map_pre_seismic.png")
+        print("  - map_co_seismic.png")
+        print("  - map_predicted.png")
+
+    def _calculate_velocities(self, start_dec: float, end_dec: float) -> dict:
+        start_idx = np.searchsorted(self.time_array, start_dec)
+        end_idx = np.searchsorted(self.time_array, end_dec) - 1
+
+        if start_idx >= end_idx or start_idx < 0 or end_idx >= len(self.time_array):
+            return {}
+
+        n_s = len(self.station_names)
+        dt_years = self.time_array[end_idx] - self.time_array[start_idx]
+        if dt_years <= 0:
+            return {}
+
+        start_coords = self.feature_mat[start_idx, :n_s * 3].reshape(n_s, 3)
+        end_coords = self.feature_mat[end_idx, :n_s * 3].reshape(n_s, 3)
+
+        start_denorm = self._denormalize_coords(start_coords)
+        end_denorm = self._denormalize_coords(end_coords)
+
+        velocities = {}
+        for i, name in enumerate(self.station_names):
+            loc = self.station_locations.get(name, {})
+            dE = (end_denorm[i, 0] - start_denorm[i, 0]) / dt_years
+            dN = (end_denorm[i, 1] - start_denorm[i, 1]) / dt_years
+            velocities[name] = {
+                'lat': loc.get('lat', 0.0),
+                'lon': loc.get('lon', 0.0),
+                'vE': dE,
+                'vN': dN,
+                'sigE': 0.001,
+                'sigN': 0.001,
+                'corEN': 0.0
+            }
+        return velocities
+
 def print_prediction_report(result: dict, predictor: GNSSPredictor):
     n_s = len(predictor.station_names)
     axes = ['E', 'N', 'U']
@@ -290,9 +408,10 @@ def main():
         print("\nMENU PREDIKSI:")
         print("1. Prediksi Deformasi pada Tanggal Spesifik")
         print("2. Analisis Potensi Gempa Mendatang (Kapan & Di mana)")
-        print("3. Keluar")
+        print("3. Generate Peta GMT (Pre-seismic, Co-seismic, Predicted)")
+        print("4. Keluar")
 
-        choice = input("\nPilih opsi (1/2/3): ")
+        choice = input("\nPilih opsi (1/2/3/4): ")
 
         if choice == '1':
             date_str = input("Masukkan tanggal (YYYY-MM-DD): ")
@@ -311,6 +430,10 @@ def main():
             print("\nCatatan: Analisis berdasarkan akumulasi strain dan pola temporal terbaru.")
 
         elif choice == '3':
+            date_str = input("Masukkan tanggal prediksi (YYYY-MM-DD): ")
+            predictor.generate_gmt_maps(date_str)
+
+        elif choice == '4':
             print("Keluar dari sistem. Sampai jumpa!")
             break
         else:

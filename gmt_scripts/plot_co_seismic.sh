@@ -1,80 +1,64 @@
 #!/bin/bash
 # ============================================================================
-# GMT Script: CO-SEISMIC DEFORMATION MAP
-# ============================================================================
-# Visualisasi pergeseran sesaat setelah gempa
-
+# GMT: CO-SEISMIC DISPLACEMENT MAP — Tohoku M9.0 (2011-03-11)
+# Unit: mm | Scale: Se0.06c
 set -e
-
-PROJECT_NAME="gnss_deformation"
-OUTPUT_DIR="outputs/plots"
-GMT_INPUT_DIR="data/gmt_inputs"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/map_config.sh"
 MAP_NAME="map_co_seismic"
 
-PROJECTION="M8i"
-FRAME="a1g1"
-REGION="139/147/37/45"
-DPI="300"
+echo "GMT: CO-SEISMIC DISPLACEMENT MAP"
+echo "Region: $REGION  Projection: $PROJECTION"
 
 mkdir -p "$OUTPUT_DIR"
 
-echo "=========================================="
-echo "GMT Map Generation: CO-SEISMIC"
-echo "=========================================="
-
-gmt begin $MAP_NAME ps
+gmt begin "$OUTPUT_DIR/$MAP_NAME" pdf,png
 
 gmt set MAP_FRAME_TYPE plain
-gmt set FONT_LABEL 12p,Helvetica,black
-gmt set FONT_ANNOT_PRIMARY 10p,Helvetica,black
+gmt set MAP_FRAME_WIDTH 0.12c
+gmt set MAP_TITLE_OFFSET 0.8c
+gmt set FONT_TITLE "$FONT_TITLE"
+gmt set FONT_LABEL "$FONT_LABEL"
+gmt set FONT_ANNOT_PRIMARY "$FONT_ANNOT"
 
-# Main map
-echo "Creating co-seismic deformation map..."
-gmt basemap -R$REGION -J$PROJECTION -B$FRAME -BWSne+t"Co-seismic GNSS Deformation"
 
-# Coastlines
-gmt coast -R$REGION -J$PROJECTION -Slightblue -W1p,black -N1
+gmt basemap -R$REGION -J$PROJECTION -Bxa1 -Bya1 \
+    -BWSne+t"Co-Seismic GNSS Displacement - Tohoku M9.0 (2011-03-11)"
 
-# Earthquake epicenter marker
+gmt coast -R$REGION -J$PROJECTION -Df -W0.4p,dimgray -Slightblue -N1/0.3p -B
+
 if [ -f "$GMT_INPUT_DIR/earthquake_event.gmt" ]; then
-    echo "Marking earthquake epicenter..."
     gmt plot "$GMT_INPUT_DIR/earthquake_event.gmt" -R$REGION -J$PROJECTION \
-        -Sa0.5c -Gred -W1p,darkred
+        -Sa0.55c -Gred -W0.8p,darkred
 fi
 
-# Velocity vectors (co-seismic)
-if [ -f "$GMT_INPUT_DIR/stations_velocity.gmt" ]; then
-    echo "Plotting co-seismic displacement..."
-    gmt velo "$GMT_INPUT_DIR/stations_velocity.gmt" -R$REGION -J$PROJECTION \
-        -Sn1c/0.95 -A18p+e -W1p,darkred -L -N -D8 \
-        -t40
+if [ -f "$GMT_INPUT_DIR/co_seismic_disp.gmt" ]; then
+    gmt velo "$GMT_INPUT_DIR/co_seismic_disp.gmt" -R$REGION -J$PROJECTION \
+        -Se0.06c/0.95 -A14p+e+a30 -W0.8p,darkred -Gdarkred -L -N
 fi
 
-# Station points
 if [ -f "$GMT_INPUT_DIR/stations_coords.gmt" ]; then
-    echo "Plotting stations..."
     gmt plot "$GMT_INPUT_DIR/stations_coords.gmt" -R$REGION -J$PROJECTION \
-        -Sc0.15c -Gdarkred -W0.5p,black
+        -Sc0.22c -Gdarkred -W0.4p,white
+    gmt text "$GMT_INPUT_DIR/stations_coords.gmt" -R$REGION -J$PROJECTION \
+        -F+f5.5p,Helvetica,darkred+jLM -Dj0.15c/0.15c
 fi
 
-# Grid
-gmt basemap -R$REGION -J$PROJECTION -Bg1
+gmt basemap -R$REGION -J$PROJECTION -Lg139.4/37.2+c38+w50k+l"50 km"+f
+gmt basemap -R$REGION -J$PROJECTION -Tdg142.4/41.2+w1.2c+f2+l
 
-# Scale
-gmt basemap -R$REGION -J$PROJECTION -Lg140/38+c-7.5+w50k+l"Scale (km)"
-
-# North arrow
-gmt basemap -R$REGION -J$PROJECTION -Tmg141/37+w2c+l
+cat > legend.txt << 'EOF'
+H 12p Helvetica-Bold Legend
+D 0.2c 1p
+S 0.5c - 0.8c darkred 1.5p,darkred 0.5c Displacement (mm)
+S 0.5c a 0.28c red 0.8p,darkred 0.5c Epicenter (M9.0)
+S 0.5c c 0.22c darkred 0.4p,white 0.5c GNSS Station
+EOF
+gmt legend legend.txt -R$REGION -J$PROJECTION \
+    -DjTL+w5.0c+o0.3c -F+p0.5p+gwhite
+rm -f legend.txt
 
 gmt end
 
-ps2pdf $MAP_NAME.ps "$OUTPUT_DIR/$MAP_NAME.pdf"
-convert -density $DPI -alpha off "$OUTPUT_DIR/$MAP_NAME.pdf" "$OUTPUT_DIR/$MAP_NAME.png"
-
-rm -f $MAP_NAME.ps gmt.history
-
-echo "=========================================="
-echo "✓ Co-seismic map created successfully"
-echo "  Output: $OUTPUT_DIR/$MAP_NAME.pdf"
-echo "          $OUTPUT_DIR/$MAP_NAME.png"
-echo "=========================================="
+rm -f gmt.history topo.nc
+echo "Done: $OUTPUT_DIR/$MAP_NAME"

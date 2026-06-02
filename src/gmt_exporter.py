@@ -58,9 +58,10 @@ class GMTExporter:
         Buat file vektor kecepatan untuk `gmt velo`.
 
         Format: Lon Lat VeloE VeloN SigmaE SigmaN CorEN StationName
+        Units: mm/yr (standard geodesi)
 
         Args:
-            stations: {name: {lon, lat, vE, vN, sigE, sigN, corEN}}
+            stations: {name: {lon, lat, vE, vN, sigE, sigN, corEN}}  (vE/vN in m/yr)
             period:   'pre', 'co', atau 'predicted'
             output_file: nama file output (auto-generate jika None)
         """
@@ -70,15 +71,15 @@ class GMTExporter:
 
         with open(filepath, 'w') as f:
             f.write(f"# GMT velo format — {period}-seismic\n")
-            f.write("# Lon Lat VeloE(m/yr) VeloN(m/yr) SigmaE SigmaN CorEN StationName\n")
+            f.write("# Lon Lat VeloE(mm/yr) VeloN(mm/yr) SigmaE SigmaN CorEN StationName\n")
 
             for name, d in stations.items():
                 lon = self.normalize_longitude(d.get('lon', 110.0))
                 lat = d.get('lat', -7.5)
-                vE  = d.get('vE', 0.0)
-                vN  = d.get('vN', 0.0)
-                sE  = d.get('sigE', 0.001)
-                sN  = d.get('sigN', 0.001)
+                vE  = d.get('vE', 0.0) * 1000
+                vN  = d.get('vN', 0.0) * 1000
+                sE  = d.get('sigE', 0.001) * 1000
+                sN  = d.get('sigN', 0.001) * 1000
                 cor = d.get('corEN', 0.0)
                 f.write(f"{lon:10.5f} {lat:9.5f} {vE:10.6f} {vN:10.6f} "
                         f"{sE:10.6f} {sN:10.6f} {cor:7.4f} {name}\n")
@@ -281,6 +282,128 @@ class GMTExporter:
 
         logger.info(f"GMT export selesai: {len(files)} file dibuat")
         return files
+
+
+    # ------------------------------------------------------------------
+    # Predicted vs Actual displacement vectors
+    # ------------------------------------------------------------------
+    def create_predicted_vs_actual_file(self,
+                                         station_names: List[str],
+                                         station_locations: Dict[str, Dict],
+                                         predicted: np.ndarray,
+                                         actual: np.ndarray,
+                                         target_date: str = "") -> Tuple[str, str]:
+        """
+        Buat file vektor prediksi dan aktual untuk `gmt velo -Se`.
+
+        Format: Lon Lat dE(mm) dN(mm) SigE SigN Cor
+
+        Args:
+            station_names    : list nama stasiun
+            station_locations: {name: {lat, lon, ...}}
+            predicted        : (n_stations, 3) prediksi [E, N, U] dalam meter
+            actual           : (n_stations, 3) aktual [E, N, U] dalam meter
+            target_date      : tanggal untuk judul
+
+        Returns:
+            (path_predicted, path_actual)
+        """
+        pred_file = self.output_dir / "predicted_vectors.gmt"
+        actual_file = self.output_dir / "actual_vectors.gmt"
+
+        with open(pred_file, 'w') as fp, open(actual_file, 'w') as fa:
+            fp.write(f"# Predicted displacement vectors — {target_date}\n")
+            fp.write("# Lon Lat dE(cm) dN(cm) SigE SigN Cor\n")
+            fa.write(f"# Actual displacement vectors — {target_date}\n")
+            fa.write("# Lon Lat dE(cm) dN(cm) SigE SigN Cor\n")
+
+            for i, name in enumerate(station_names):
+                loc = station_locations.get(name, {})
+                lat = loc.get('lat', 0.0)
+                lon = self.normalize_longitude(loc.get('lon', 0.0))
+
+                if i < predicted.shape[0]:
+                    pE = float(predicted[i, 0]) * 100
+                    pN = float(predicted[i, 1]) * 100
+                else:
+                    pE = pN = 0.0
+
+                if i < actual.shape[0]:
+                    aE = float(actual[i, 0]) * 100
+                    aN = float(actual[i, 1]) * 100
+                else:
+                    aE = aN = 0.0
+
+                fp.write(f"{lon:10.5f} {lat:9.5f} {pE:10.4f} {pN:10.4f} 0.5 0.5 0.0\n")
+                fa.write(f"{lon:10.5f} {lat:9.5f} {aE:10.4f} {aN:10.4f} 0.5 0.5 0.0\n")
+
+        logger.info(f"Predicted vectors: {pred_file}")
+        logger.info(f"Actual vectors: {actual_file}")
+        return str(pred_file), str(actual_file)
+
+    # ------------------------------------------------------------------
+    # Co-seismic displacement vectors
+    # ------------------------------------------------------------------
+    def create_co_seismic_displacement_file(self,
+                                             station_names: List[str],
+                                             station_locations: Dict[str, Dict],
+                                             displacement: np.ndarray,
+                                             earthquake_date: str = "") -> str:
+        """
+        Buat file vektor displacement co-seismic untuk `gmt velo -Se`.
+
+        Format: Lon Lat dE(mm) dN(mm) SigE SigN Cor
+
+        Args:
+            displacement: (n_stations, 3) displacement [E, N, U] dalam meter
+        """
+        filepath = self.output_dir / "co_seismic_disp.gmt"
+
+        with open(filepath, 'w') as f:
+            f.write(f"# Co-seismic displacement vectors — {earthquake_date}\n")
+            f.write("# Lon Lat dE(mm) dN(mm) SigE SigN Cor\n")
+
+            for i, name in enumerate(station_names):
+                loc = station_locations.get(name, {})
+                lat = loc.get('lat', 0.0)
+                lon = self.normalize_longitude(loc.get('lon', 0.0))
+
+                if i < displacement.shape[0]:
+                    dE = float(displacement[i, 0]) * 1000
+                    dN = float(displacement[i, 1]) * 1000
+                else:
+                    dE = dN = 0.0
+
+                f.write(f"{lon:10.5f} {lat:9.5f} {dE:10.4f} {dN:10.4f} 0.5 0.5 0.0\n")
+
+        logger.info(f"Co-seismic displacement: {filepath}")
+        return str(filepath)
+
+    # ------------------------------------------------------------------
+    # Station coordinates for GMT (updated)
+    # ------------------------------------------------------------------
+    def create_station_coords_file(self,
+                                    station_names: List[str],
+                                    station_locations: Dict[str, Dict]) -> str:
+        """
+        Buat file koordinat stasiun dari data pipeline aktual.
+
+        Format: Lon Lat StationName
+        """
+        filepath = self.output_dir / "stations_coords.gmt"
+
+        with open(filepath, 'w') as f:
+            f.write("# Koordinat stasiun GNSS\n")
+            f.write("# Lon Lat StationName\n")
+
+            for name in station_names:
+                loc = station_locations.get(name, {})
+                lat = loc.get('lat', 0.0)
+                lon = self.normalize_longitude(loc.get('lon', 0.0))
+                f.write(f"{lon:10.5f} {lat:9.5f} {name}\n")
+
+        logger.info(f"Station coords: {filepath}")
+        return str(filepath)
 
 
 def main_gmt():
